@@ -9,7 +9,7 @@ Windows 开发环境一键初始化脚本，适合在新电脑或干净系统中
 在普通用户权限的 PowerShell 中执行：
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_NAME/windows-dev-bootstrap/main/Initialize-WindowsDevEnv.ps1 | iex
+irm https://raw.githubusercontent.com/zzzkp/windows-dev-bootstrap/main/Initialize-WindowsDevEnv.ps1 | iex
 ```
 
 执行后按提示选择开发根目录、代理和需要安装的开发工具套件。直接回车会使用默认值或安装全部套件。
@@ -19,7 +19,7 @@ irm https://raw.githubusercontent.com/YOUR_GITHUB_NAME/windows-dev-bootstrap/mai
 如果希望先查看脚本内容，再手动执行：
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_NAME/windows-dev-bootstrap/main/Initialize-WindowsDevEnv.ps1 -OutFile .\Initialize-WindowsDevEnv.ps1
+irm https://raw.githubusercontent.com/zzzkp/windows-dev-bootstrap/main/Initialize-WindowsDevEnv.ps1 -OutFile .\Initialize-WindowsDevEnv.ps1
 notepad .\Initialize-WindowsDevEnv.ps1
 .\Initialize-WindowsDevEnv.ps1
 ```
