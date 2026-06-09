@@ -32,6 +32,7 @@ notepad .\Initialize-WindowsDevEnv.ps1
 - `node开发套件`：包含 Volta、Node.js、npm、pnpm。
 - `Java开发套件`：包含 JDK、Maven。
 - `Python开发套件`：包含 Python、pip、uv。
+- `Go开发套件`：包含 Go，并配置 Go 模块代理。
 
 选择开发工具时可以输入编号或名称，多个选项用英文逗号分隔。直接回车会安装全部套件。
 
@@ -42,6 +43,14 @@ notepad .\Initialize-WindowsDevEnv.ps1
 ```
 
 表示安装 node 开发套件和 Java 开发套件。Git 始终会安装或配置。
+
+也可以输入名称，例如：
+
+```text
+go
+```
+
+表示安装 Go 开发套件。
 
 ## 默认目录
 
@@ -57,6 +66,13 @@ D:\Dev
 - `D:\Dev\caches`
 - `D:\Dev\configs`
 - `D:\Dev\workspace`
+
+安装 Go 开发套件时，还会使用以下目录：
+
+- `D:\Dev\apps\go`
+- `D:\Dev\apps\go\bin`
+- `D:\Dev\caches\go-build`
+- `D:\Dev\caches\go-mod`
 
 运行时可以根据提示输入其他开发根目录。
 

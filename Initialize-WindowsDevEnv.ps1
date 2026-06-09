@@ -228,7 +228,9 @@ function Read-DevRoot {
             (Join-Path $devRoot 'apps'), $caches, $configs, (Join-Path $devRoot 'workspace'),
             (Join-Path $caches 'npm'), (Join-Path $caches 'pnpm-store'), (Join-Path $caches 'uv'),
             (Join-Path $caches 'pip'), (Join-Path $caches 'maven-repository'), (Join-Path $configs 'maven'),
-            (Join-Path (Join-Path $devRoot 'apps') 'pnpm')
+            (Join-Path $caches 'go-build'), (Join-Path $caches 'go-mod'),
+            (Join-Path (Join-Path $devRoot 'apps') 'pnpm'), (Join-Path (Join-Path $devRoot 'apps') 'go'),
+            (Join-Path (Join-Path (Join-Path $devRoot 'apps') 'go') 'bin')
         )
         foreach ($directory in $directories) {
             if (-not (Test-Path -LiteralPath $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
@@ -242,6 +244,10 @@ function Read-DevRoot {
         $script:Summary.Paths['PipCache'] = Join-Path $caches 'pip'
         $script:Summary.Paths['MavenRepository'] = Join-Path $caches 'maven-repository'
         $script:Summary.Paths['MavenSettings'] = Join-Path (Join-Path $configs 'maven') 'settings.xml'
+        $script:Summary.Paths['GoPath'] = Join-Path (Join-Path $devRoot 'apps') 'go'
+        $script:Summary.Paths['GoBin'] = Join-Path (Join-Path (Join-Path $devRoot 'apps') 'go') 'bin'
+        $script:Summary.Paths['GoBuildCache'] = Join-Path $caches 'go-build'
+        $script:Summary.Paths['GoModCache'] = Join-Path $caches 'go-mod'
         return $devRoot
     } catch {
         Write-ErrorMessage ('开发根目录不可用：{0}' -f $_.Exception.Message)
@@ -287,6 +293,12 @@ function Get-DevToolSuites {
             DisplayName = 'Python开发套件（python + uv）'
             MenuText = 'Python开发套件（python + uv）（可选）'
             Aliases = @('4', 'python', 'py', 'uv')
+        },
+        [pscustomobject]@{
+            Key = 'go-suite'
+            DisplayName = 'Go开发套件（go）'
+            MenuText = 'Go开发套件（go）（可选）'
+            Aliases = @('5', 'go', 'golang')
         }
     )
 }
@@ -727,6 +739,47 @@ function Install-Python {
     if ($uvOk -and (Test-CommandExists 'uv')) { $script:Summary.Versions['uv'] = Get-CommandText -FilePath 'uv' -Arguments @('--version') }
 }
 
+function Configure-GoEnvironment {
+    param([string]$DevRoot)
+
+    $goPath = Join-Path (Join-Path $DevRoot 'apps') 'go'
+    $goBin = Join-Path $goPath 'bin'
+    $goBuildCache = Join-Path (Join-Path $DevRoot 'caches') 'go-build'
+    $goModCache = Join-Path (Join-Path $DevRoot 'caches') 'go-mod'
+
+    foreach ($directory in @($goPath, $goBin, $goBuildCache, $goModCache)) {
+        if (-not (Test-Path -LiteralPath $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+    }
+
+    Set-UserEnvironmentVariable -Name 'GOPATH' -Value $goPath | Out-Null
+    Set-UserEnvironmentVariable -Name 'GOBIN' -Value $goBin | Out-Null
+    Set-UserEnvironmentVariable -Name 'GOCACHE' -Value $goBuildCache | Out-Null
+    Set-UserEnvironmentVariable -Name 'GOMODCACHE' -Value $goModCache | Out-Null
+    Add-PathEntry -PathEntry $goBin
+
+    $script:Summary.Paths['GoPath'] = $goPath
+    $script:Summary.Paths['GoBin'] = $goBin
+    $script:Summary.Paths['GoBuildCache'] = $goBuildCache
+    $script:Summary.Paths['GoModCache'] = $goModCache
+
+    if (-not (Test-CommandExists 'go')) {
+        Write-Warn 'go 命令不可用，跳过 go env 配置。'
+        return
+    }
+
+    Invoke-ExternalCommand -FilePath 'go' -Arguments @('env', '-w', 'GOPROXY=https://goproxy.cn,direct') -FailureMessage '配置 GOPROXY 失败' | Out-Null
+    Invoke-ExternalCommand -FilePath 'go' -Arguments @('env', '-w', ('GOPATH={0}' -f $goPath)) -FailureMessage '配置 GOPATH 失败' | Out-Null
+    Invoke-ExternalCommand -FilePath 'go' -Arguments @('env', '-w', ('GOBIN={0}' -f $goBin)) -FailureMessage '配置 GOBIN 失败' | Out-Null
+    Invoke-ExternalCommand -FilePath 'go' -Arguments @('env', '-w', ('GOCACHE={0}' -f $goBuildCache)) -FailureMessage '配置 GOCACHE 失败' | Out-Null
+    Invoke-ExternalCommand -FilePath 'go' -Arguments @('env', '-w', ('GOMODCACHE={0}' -f $goModCache)) -FailureMessage '配置 GOMODCACHE 失败' | Out-Null
+    $script:Summary.Versions['Go'] = Get-CommandText -FilePath 'go' -Arguments @('version')
+}
+
+function Install-Go {
+    Write-Step '安装 Go'
+    return (Install-ScoopPackage -PackageName 'go' -DisplayName 'Go' -CommandName 'go')
+}
+
 function Write-SummaryList {
     param([string]$Title, [object[]]$Items)
     Write-Host $Title -ForegroundColor White
@@ -783,6 +836,13 @@ function Install-PythonDevSuite {
     Install-Python -DevRoot $DevRoot
 }
 
+function Install-GoDevSuite {
+    param([string]$DevRoot)
+
+    Write-Step '安装 Go开发套件（go）'
+    if (Install-Go) { Configure-GoEnvironment -DevRoot $DevRoot }
+}
+
 function Install-SelectedSuites {
     param(
         [string[]]$Selection,
@@ -792,6 +852,7 @@ function Install-SelectedSuites {
     if ($Selection -contains 'node-suite') { Install-NodeDevSuite -DevRoot $DevRoot }
     if ($Selection -contains 'java-suite') { Install-JavaDevSuite -DevRoot $DevRoot }
     if ($Selection -contains 'python-suite') { Install-PythonDevSuite -DevRoot $DevRoot }
+    if ($Selection -contains 'go-suite') { Install-GoDevSuite -DevRoot $DevRoot }
 }
 
 function Start-WindowsDevEnvironmentSetup {
